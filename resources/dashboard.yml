@@ -1,0 +1,13 @@
+resources:
+  dashboards:
+    pos_retail_bakehouse_analytics:
+      display_name: ${var.dashboard_name}
+      warehouse_id: ${var.warehouse_id}
+      parent_path: ${var.dashboard_parent_path}
+      embed_credentials: true
+      file_path: ../dashboards/pos_retail_bakehouse_analytics.lvdash.json
+      dataset_catalog: ${var.catalog}
+      dataset_schema: ${var.schema}
+      permissions:
+        - level: CAN_VIEW
+          group_name: users

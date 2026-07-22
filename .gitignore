@@ -1,0 +1,28 @@
+# Databricks bundle state
+.databricks/
+*.bak
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+.env
+.env.*
+
+# IDE
+.vscode/settings.json
+.idea/
+*.iml
+
+# Local CI artefacts
+.pytest_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+
+# macOS
+.DS_Store

@@ -1,0 +1,38 @@
+name: deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: pos-retail-prod-deploy
+  cancel-in-progress: false
+
+jobs:
+  offline-local-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build dev container image
+        run: docker compose build ci
+      - name: Run offline local CI suite
+        run: docker compose run --rm ci
+
+  deploy-prod:
+    runs-on: ubuntu-latest
+    needs: offline-local-ci
+    environment: production
+    env:
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: databricks/setup-cli@main
+      - name: Validate bundle before deploy
+        run: databricks bundle validate -t prod --var warehouse_id=${{ vars.DATABRICKS_WAREHOUSE_ID }}
+      - name: Deploy bundle after merge
+        run: databricks bundle deploy -t prod --var warehouse_id=${{ vars.DATABRICKS_WAREHOUSE_ID }}
+      - name: Emit deployed resources summary
+        run: databricks bundle summary -t prod --var warehouse_id=${{ vars.DATABRICKS_WAREHOUSE_ID }}

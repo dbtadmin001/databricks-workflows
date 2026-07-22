@@ -1,0 +1,9 @@
+services:
+  ci:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+    command: bash scripts/local_ci.sh
