@@ -1,0 +1,27 @@
+# Test environment configuration
+environment: test
+
+databricks:
+  warehouse_id: ${DATABRICKS_WAREHOUSE_ID}
+  catalog: workspace
+  schema: test
+  
+  pipeline:
+    development_mode: false
+    continuous: false
+    serverless: true
+    photon: true
+
+  dashboard:
+    parent_path: /Workspace/Shared/test_dashboards
+    embed_credentials: true
+
+fabric:
+  workspace_id: ${FABRIC_WORKSPACE_ID}
+  lakehouse_name: pos_retail_test
+  
+aws:
+  region: ${AWS_REGION:-us-east-1}
+  s3_bucket: ${AWS_S3_BUCKET}
+  glue_database: pos_retail_test
+  emr_cluster_id: ${AWS_EMR_CLUSTER_ID}

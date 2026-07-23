@@ -1,73 +1,98 @@
-# POS Retail — Medallion Analytics
+# POS Retail — Multi-Platform Analytics Pipeline
 
-Databricks Declarative Automation Bundle for the Bakehouse franchise POS retail pipeline.
+**Bakehouse franchise POS retail analytics — deployable to Databricks, Microsoft Fabric, or AWS**
 
-## What's in here
+## Overview
 
-```
-databricks.yml              Bundle root — dev & prod targets
-resources/
-  pipeline.yml              Lakeflow Spark Declarative Pipeline (bronze → silver → gold)
-  dashboard.yml             AI/BI Bakehouse Analytics dashboard
-notebooks/
-  pos_retail_analytics.sql  Analytics notebook (SQL source)
-dashboards/
-  pos_retail_bakehouse_analytics.lvdash.json  Dashboard definition (edit with VS Code / any editor)
-transformations/
-  bronze/                   Raw ingestion tables
-  silver/                   Enriched transactions
-  gold/                     Aggregated reporting tables
-.github/workflows/
-  pr-checks.yml             CI checks on every PR to main
-  deploy.yml                Auto-deploy to prod on merge to main
-.devcontainer/              Dev container for local editing
-docker-compose.yml          Local CI runner (offline, no Databricks compute needed)
-scripts/
-  local_ci.sh               One-shot local validation script
-  validate_project.py       Structural checks (YAML, SQL, file presence)
-tests/
-  test_project_structure.py pytest suite for offline PR gating
-```
+This repository implements a medallion architecture pipeline for analyzing point-of-sale data. The codebase is organized as a **multi-platform framework**: business logic is shared across platforms, while platform-specific deployment adapters live in separate directories.
 
-## CI/CD flow
+## Repository Structure
 
 ```
-feature-branch  →  PR to main  →  pr-checks.yml  →  merge  →  deploy.yml → bundle deploy -t prod
+src/core/                      Platform-agnostic business logic (PySpark/SQL transforms)
+projects/pos_retail/           Project-specific configuration
+platforms/                     Platform-specific deployment adapters
+  ├── databricks/              Databricks Asset Bundles, pipelines, dashboards
+  ├── fabric/                  Microsoft Fabric workspace items, lakehouses
+  └── aws/                     AWS Glue/EMR, Step Functions, Terraform
+config/environments/           Environment-specific configuration (dev/test/prod)
+infra/                         Shared infrastructure modules and scripts
+tests/                         Unit, integration, contract, and parity tests
 ```
 
-All merges to `main` require PR review (enforce via GitHub branch protection rules) and passing CI.
+## Deployment Interface
 
-## Deploying manually
+Deploy any project to any platform with:
+
+- `TARGET_PLATFORM`: databricks | fabric | aws
+- `ENVIRONMENT`: dev | test | prod
+- `PROJECT_NAME`: pos_retail
+- `CONFIG_PATH`: config/environments/${ENVIRONMENT}.yml
+
+## Quick Start
+
+### 1. Configure Environment
+
+Copy the template and fill in your values:
 
 ```bash
-# Install Databricks CLI ≥ 0.232.0
-pip install databricks-cli
-
-# Authenticate
-export DATABRICKS_HOST=https://dbc-94db375b-4c4c.cloud.databricks.com
-export DATABRICKS_TOKEN=<your-pat>
-
-# Validate
-databricks bundle validate -t prod --var warehouse_id=<warehouse-id>
-
-# Deploy
-databricks bundle deploy -t prod --var warehouse_id=<warehouse-id>
+cp config/.env.example config/.env
+# Edit config/.env with your credentials
 ```
 
-## Editing the dashboard externally
+### 2. Deploy to Databricks
 
-Open `dashboards/pos_retail_bakehouse_analytics.lvdash.json` in any editor (VS Code, etc.).  
-After editing, open a PR. On merge, `deploy.yml` redeploys it automatically.  
-To pull live workspace edits back into the file:
+See `platforms/databricks/README.md` for detailed deployment instructions.
+
+### 3. Deploy to Fabric
+
+See `platforms/fabric/README.md` (coming soon)
+
+### 4. Deploy to AWS
+
+See `platforms/aws/README.md` (coming soon)
+
+## CI/CD Flow
+
+```
+feature-branch → PR → pr-checks.yml (shared CI) → merge → platform-specific deploy
+```
+
+All merges to `main` require PR review and passing CI checks.
+
+## Development
+
+### Local CI (Docker)
+
+Run offline CI checks without Databricks compute:
 
 ```bash
-databricks bundle generate dashboard --resource pos_retail_bakehouse_analytics --force
+docker compose run --rm ci
 ```
 
-## Required GitHub secrets / variables
+### Environment Configuration
 
-| Name | Where | Description |
-|------|-------|-------------|
-| `DATABRICKS_HOST` | Secret | Workspace URL |
-| `DATABRICKS_TOKEN` | Secret | Service-principal or user PAT |
-| `DATABRICKS_WAREHOUSE_ID` | Variable | SQL warehouse ID for dashboards |
+Environment-specific settings live in `config/environments/{env}.yml`. Load programmatically:
+
+```bash
+python infra/scripts/load_config.py --environment dev --platform databricks
+```
+
+## Required Secrets
+
+Configure as GitHub secrets (CI/CD) or environment variables (local):
+
+| Secret | Description |
+|--------|-------------|
+| `DATABRICKS_HOST` | Workspace URL |
+| `DATABRICKS_TOKEN` | Service principal or user PAT |
+| `DATABRICKS_WAREHOUSE_ID` | SQL warehouse ID |
+
+For Fabric and AWS, see `config/.env.example`.
+
+## Documentation
+
+Platform-specific deployment guides:
+- Databricks: `platforms/databricks/README.md`
+- Fabric: `platforms/fabric/README.md` (coming soon)
+- AWS: `platforms/aws/README.md` (coming soon)

@@ -1,0 +1,36 @@
+# Development environment configuration
+environment: dev
+
+databricks:
+  # Set via environment variables:
+  # - DATABRICKS_HOST
+  # - DATABRICKS_TOKEN
+  warehouse_id: ${DATABRICKS_WAREHOUSE_ID}
+  
+  # Unity Catalog targets
+  catalog: workspace
+  schema: default
+  
+  # Pipeline settings
+  pipeline:
+    development_mode: true
+    continuous: false
+    serverless: true
+    photon: true
+
+  # Dashboard settings  
+  dashboard:
+    parent_path: /Workspace/Users/${DATABRICKS_USER}
+    embed_credentials: true
+
+fabric:
+  # Microsoft Fabric workspace configuration
+  workspace_id: ${FABRIC_WORKSPACE_ID}
+  lakehouse_name: pos_retail_dev
+  
+aws:
+  # AWS deployment configuration
+  region: ${AWS_REGION:-us-east-1}
+  s3_bucket: ${AWS_S3_BUCKET}
+  glue_database: pos_retail_dev
+  emr_cluster_id: ${AWS_EMR_CLUSTER_ID}
