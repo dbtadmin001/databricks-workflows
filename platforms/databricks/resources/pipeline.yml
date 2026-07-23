@@ -1,0 +1,12 @@
+resources:
+  pipelines:
+    pos_retail_medallion:
+      name: ${var.pipeline_name}
+      catalog: ${var.catalog}
+      schema: ${var.schema}
+      channel: CURRENT
+      serverless: true
+      photon: true
+      libraries:
+        - glob:
+            include: src/core/transformations/**
