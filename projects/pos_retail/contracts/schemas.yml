@@ -1,0 +1,59 @@
+# Data contracts for POS Retail project
+# These schemas define expected structure and quality rules
+
+bronze_transactions:
+  description: Raw POS transactions with audit columns
+  columns:
+    - name: transactionID
+      type: string
+      nullable: false
+      description: Unique transaction identifier
+    - name: dateTime
+      type: timestamp
+      nullable: false
+    - name: totalPrice
+      type: double
+      nullable: false
+      constraints:
+        - type: positive
+          message: "Total price must be positive"
+    - name: quantity
+      type: long
+      nullable: false
+      constraints:
+        - type: positive
+          message: "Quantity must be positive"
+    - name: _ingested_at
+      type: timestamp
+      nullable: false
+    - name: _source
+      type: string
+      nullable: false
+
+silver_transactions_enriched:
+  description: Enriched transactions with franchise and customer details
+  quality_rules:
+    - name: valid_transaction_id
+      rule: "transactionID IS NOT NULL"
+      action: drop
+    - name: valid_total_price
+      rule: "totalPrice > 0"
+      action: drop
+    - name: valid_quantity
+      rule: "quantity > 0"
+      action: drop
+    - name: valid_unit_price
+      rule: "unitPrice > 0"
+      action: warn
+
+gold_daily_revenue:
+  description: Daily revenue aggregations by franchise and product
+  grain:
+    - transaction_date
+    - franchiseID
+    - product
+  aggregations:
+    - total_revenue
+    - total_units_sold
+    - transaction_count
+    - avg_transaction_value

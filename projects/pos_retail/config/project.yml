@@ -1,0 +1,44 @@
+project:
+  name: pos_retail
+  description: Bakehouse franchise POS retail analytics pipeline
+  version: "1.0.0"
+  
+data_sources:
+  - name: bakehouse_transactions
+    type: table
+    location: samples.bakehouse.sales_transactions
+  - name: bakehouse_franchises
+    type: table
+    location: samples.bakehouse.sales_franchises
+  - name: bakehouse_customers
+    type: table
+    location: samples.bakehouse.sales_customers
+  - name: bakehouse_suppliers
+    type: table
+    location: samples.bakehouse.sales_suppliers
+
+medallion:
+  bronze_tables:
+    - bronze_transactions
+    - bronze_franchises
+    - bronze_customers
+    - bronze_suppliers
+  silver_tables:
+    - silver_transactions_enriched
+    - silver_franchise_details
+  gold_tables:
+    - gold_daily_revenue
+    - gold_product_performance
+    - gold_franchise_ranking
+    - gold_customer_segments
+
+environments:
+  dev:
+    catalog: workspace
+    schema: default
+  test:
+    catalog: workspace
+    schema: test
+  prod:
+    catalog: workspace
+    schema: default
