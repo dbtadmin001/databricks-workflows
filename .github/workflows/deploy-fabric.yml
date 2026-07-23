@@ -1,0 +1,67 @@
+name: Deploy to Microsoft Fabric
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'prod'
+        type: choice
+        options:
+          - dev
+          - test
+          - prod
+
+concurrency:
+  group: deploy-fabric-${{ github.ref }}-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  shared-ci:
+    name: Run shared CI checks
+    uses: ./.github/workflows/ci-shared.yml
+  
+  deploy:
+    name: Deploy to Fabric (${{ inputs.environment }})
+    runs-on: ubuntu-latest
+    needs: shared-ci
+    environment: ${{ inputs.environment == 'prod' && 'production' || inputs.environment }}
+    env:
+      FABRIC_WORKSPACE_ID: ${{ secrets.FABRIC_WORKSPACE_ID }}
+      FABRIC_TENANT_ID: ${{ secrets.FABRIC_TENANT_ID }}
+      FABRIC_CLIENT_ID: ${{ secrets.FABRIC_CLIENT_ID }}
+      FABRIC_CLIENT_SECRET: ${{ secrets.FABRIC_CLIENT_SECRET }}
+      TARGET_ENV: ${{ inputs.environment }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements-dev.txt
+      
+      - name: Load environment config
+        run: |
+          python infra/scripts/load_config.py \
+            --environment $TARGET_ENV \
+            --platform fabric
+      
+      - name: TODO - Deploy to Fabric
+        run: |
+          echo "⚠️ Fabric deployment not yet implemented"
+          echo "TODO: Deploy notebooks, lakehouses, and semantic models"
+          echo "See platforms/fabric/ for deployment definitions"
+      
+      - name: Deployment summary
+        run: |
+          echo "### 🚧 Fabric Deployment (Not Implemented)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Fabric platform adapter is a skeleton." >> $GITHUB_STEP_SUMMARY
+          echo "See platforms/fabric/README.md for implementation details." >> $GITHUB_STEP_SUMMARY

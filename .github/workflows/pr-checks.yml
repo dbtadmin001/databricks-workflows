@@ -1,28 +1,45 @@
-name: pr-checks
+name: PR Checks
 
 on:
   pull_request:
     branches:
       - main
 
-jobs:
-  offline-local-ci:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build dev container image
-        run: docker compose build ci
-      - name: Run offline local CI suite
-        run: docker compose run --rm ci
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
-  bundle-validate:
+jobs:
+  shared-ci:
+    name: Run shared CI checks
+    uses: ./.github/workflows/ci-shared.yml
+  
+  databricks-bundle-validate:
+    name: Validate Databricks bundle
     runs-on: ubuntu-latest
-    needs: offline-local-ci
+    needs: shared-ci
     env:
       DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
       DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+    
     steps:
-      - uses: actions/checkout@v4
-      - uses: databricks/setup-cli@main
-      - name: Validate bundle configuration
-        run: databricks bundle validate -t dev --var warehouse_id=${{ vars.DATABRICKS_WAREHOUSE_ID }}
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Databricks CLI
+        uses: databricks/setup-cli@main
+      
+      - name: Validate Databricks bundle (dev target)
+        working-directory: platforms/databricks/bundles
+        run: |
+          databricks bundle validate -t dev \
+            --var warehouse_id=${{ vars.DATABRICKS_WAREHOUSE_ID || 'placeholder' }}
+      
+      - name: PR check summary
+        run: |
+          echo "### ✅ PR Checks Passed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Shared CI: Passed" >> $GITHUB_STEP_SUMMARY
+          echo "- Databricks bundle validation: Passed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Ready to merge!" >> $GITHUB_STEP_SUMMARY
