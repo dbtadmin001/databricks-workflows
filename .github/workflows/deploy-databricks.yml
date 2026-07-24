@@ -38,6 +38,7 @@ jobs:
     env:
       DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
       DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      DATABRICKS_HTTP_PATH: ${{ secrets.DATABRICKS_HTTP_PATH }}
       TARGET_ENV: ${{ inputs.environment || 'prod' }}
     
     steps:
@@ -65,6 +66,28 @@ jobs:
           databricks bundle summary -t $TARGET_ENV \
             --var warehouse_id=${{ vars.DATABRICKS_WAREHOUSE_ID }}
       
+      - name: Set up Python for dbt
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dbt and dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements-dev.txt
+      
+      - name: Install dbt packages
+        working-directory: platforms/databricks/dbt
+        run: dbt deps
+      
+      - name: Run dbt tests on Gold tables
+        working-directory: platforms/databricks/dbt
+        run: |
+          dbt test --target $TARGET_ENV
+        continue-on-error: true
+        id: dbt_tests
+      
       - name: Deployment summary
         run: |
           echo "### ✅ Databricks Deployment Complete" >> $GITHUB_STEP_SUMMARY
@@ -78,3 +101,11 @@ jobs:
           echo "- Lakeflow Spark Declarative Pipeline (Bronze → Silver → Gold)" >> $GITHUB_STEP_SUMMARY
           echo "- Lakeview Dashboard (2 pages, 14+ widgets)" >> $GITHUB_STEP_SUMMARY
           echo "- SQL Analytics Notebook" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.dbt_tests.outcome }}" == "success" ]; then
+            echo "### ✅ dbt Tests Passed" >> $GITHUB_STEP_SUMMARY
+            echo "All Gold layer data quality tests passed." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ⚠️ dbt Tests Failed" >> $GITHUB_STEP_SUMMARY
+            echo "Some Gold layer tests failed. Review dbt test output above." >> $GITHUB_STEP_SUMMARY
+          fi
