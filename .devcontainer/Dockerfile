@@ -1,4 +1,7 @@
-FROM python:3.11-slim
+# Base image pinned by digest for reproducibility
+# To update: run scripts/update_base_image.sh
+# Current digest corresponds to python:3.11-slim as of 2024-01
+FROM python:3.11-slim@sha256:db3ff2e1800a8581e2c48a27c3995339d47bdf046da21c7627accd3d51053a93
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONDONTWRITEBYTECODE=1 \

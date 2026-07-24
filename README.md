@@ -12,9 +12,9 @@ This repository implements a medallion architecture pipeline for analyzing point
 src/core/                      Platform-agnostic business logic (PySpark/SQL transforms)
 projects/pos_retail/           Project-specific configuration
 platforms/                     Platform-specific deployment adapters
-  ├── databricks/              Databricks Asset Bundles, pipelines, dashboards
+  ├── databricks/              Databricks Asset Bundles, pipelines, dashboards, dbt
   ├── fabric/                  Microsoft Fabric workspace items, lakehouses
-  └── aws/                     AWS Glue/EMR, Step Functions, Terraform
+  └── aws/                     AWS EKS, Spark-on-K8s, Terraform
 config/environments/           Environment-specific configuration (dev/test/prod)
 infra/                         Shared infrastructure modules and scripts
 tests/                         Unit, integration, contract, and parity tests
@@ -70,6 +70,8 @@ Run offline CI checks without Databricks compute:
 docker compose run --rm ci
 ```
 
+This uses a **digest-pinned** base image for reproducibility. See [DOCKER_DIGEST_PINNING.md](DOCKER_DIGEST_PINNING.md) for details.
+
 ### Environment Configuration
 
 Environment-specific settings live in `config/environments/{env}.yml`. Load programmatically:
@@ -87,12 +89,27 @@ Configure as GitHub secrets (CI/CD) or environment variables (local):
 | `DATABRICKS_HOST` | Workspace URL |
 | `DATABRICKS_TOKEN` | Service principal or user PAT |
 | `DATABRICKS_WAREHOUSE_ID` | SQL warehouse ID |
+| `DATABRICKS_HTTP_PATH` | SQL warehouse HTTP path (for dbt) |
 
 For Fabric and AWS, see `config/.env.example`.
 
 ## Documentation
 
-Platform-specific deployment guides:
-- Databricks: `platforms/databricks/README.md`
-- Fabric: `platforms/fabric/README.md` (coming soon)
-- AWS: `platforms/aws/README.md` (coming soon)
+### Platform-Specific Deployment
+* **Databricks**: [platforms/databricks/README.md](platforms/databricks/README.md)
+* **Fabric**: `platforms/fabric/README.md` (coming soon)
+* **AWS**: `platforms/aws/README.md` (coming soon)
+
+### Architecture & Concepts
+* **Migration Guide**: [MIGRATION.md](MIGRATION.md) — Refactoring history and architecture decisions
+* **dbt Usage**: [DBT_USAGE.md](DBT_USAGE.md) — What dbt does vs doesn't do; PySpark vs dbt boundary
+* **Docker Digest Pinning**: [DOCKER_DIGEST_PINNING.md](DOCKER_DIGEST_PINNING.md) — Why and how we pin base images
+
+### Testing
+* **dbt Tests**: [platforms/databricks/dbt/README.md](platforms/databricks/dbt/README.md) — Gold layer data quality tests
+* **Unit Tests**: `tests/unit/` — Platform-agnostic transform tests
+* **Contract Tests**: `tests/contracts/` — Schema validation tests
+* **Parity Tests**: `tests/parity/` (coming soon) — Cross-platform consistency tests
+
+### Adding New Projects
+* [ADDING_PROJECTS.md](ADDING_PROJECTS.md) — Template for adding new analytics projects to this framework
