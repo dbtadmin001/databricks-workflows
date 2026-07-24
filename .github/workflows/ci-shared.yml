@@ -71,6 +71,18 @@ jobs:
             echo "✓ $env config validated"
           done
       
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.0"
+      
+      - name: Validate AWS infrastructure code
+        run: |
+          echo "Running AWS infrastructure tests..."
+          ./tests/aws/run_all.sh
+          echo "✓ AWS infrastructure tests passed"
+        continue-on-error: true
+      
       - name: Generate test coverage report
         if: always()
         run: |
