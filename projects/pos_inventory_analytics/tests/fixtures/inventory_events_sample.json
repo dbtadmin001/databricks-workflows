@@ -1,0 +1,9 @@
+{"trans_id":"BAD-NULLTIME","store_id":1,"date_time":null,"change_type_id":1,"items":[{"item_id":1002,"quantity":-1}]}
+{"trans_id":"ONLINE-001491","store_id":99,"date_time":"2026-07-01T09:08:31Z","change_type_id":4,"items":[{"item_id":1005,"quantity":-3}],"bopis_order_id":"BOPIS-B1-0096"}
+{"trans_id":"PICKUP-001492","store_id":3,"date_time":"2026-07-01T09:31:31Z","change_type_id":4,"items":[{"item_id":1005,"quantity":-3}],"bopis_order_id":"BOPIS-B1-0096"}
+{"trans_id":"TXN-000026","store_id":3,"date_time":"2026-07-02T00:48:42Z","change_type_id":1,"items":[{"item_id":1024,"quantity":-4}]}
+{"trans_id":"TXN-000026","store_id":3,"date_time":"2026-07-02T00:48:42Z","change_type_id":1,"items":[{"item_id":1024,"quantity":-4}]}
+{"trans_id":"BAD-NULLSTORE","store_id":null,"date_time":"2026-07-02T10:00:00Z","change_type_id":1,"items":[{"item_id":1001,"quantity":-1}]}
+{"trans_id":"BAD-UNKNOWNITEM","store_id":2,"date_time":"2026-07-02T11:00:00Z","change_type_id":1,"items":[{"item_id":9999,"quantity":-2}]}
+{"trans_id":"TXN-000111","store_id":99,"date_time":"2026-07-01T07:01:53Z","change_type_id":1,"items":[{"item_id":1001,"quantity":-1},{"item_id":1028,"quantity":-1},{"item_id":1031,"quantity":-1}]}
+{"trans_id":"TXN-000807","store_id":1,"date_time":"2026-07-01T07:02:04Z","change_type_id":2,"items":[{"item_id":1010,"quantity":11}]}

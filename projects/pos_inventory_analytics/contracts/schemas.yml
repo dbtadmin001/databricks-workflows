@@ -1,29 +1,456 @@
-# Data contracts for <project_name>
-# Define expected schemas and quality rules
+# Data Contracts for POS Inventory Analytics
+# Version: 1.0.0
+# Last Updated: 2026-07-24
 
-bronze_<entity>:
-  description: Raw data with audit columns
+# =============================================================================
+# BRONZE LAYER — Raw Ingestion with Audit Columns
+# =============================================================================
+
+bronze_inventory_change_raw:
+  description: Raw inventory change events (nested JSON) with Auto Loader metadata
+  layer: bronze
+  streaming: true
+  ingestion_method: auto_loader
   columns:
-    - name: <column_name>
-      type: string|int|double|timestamp
-      nullable: true|false
-      description: <column purpose>
-      constraints:
-        - type: positive|unique|pattern
-          message: "<validation message>"
+    - name: trans_id
+      type: string
+      nullable: true
+      description: Transaction identifier
+    - name: store_id
+      type: int
+      nullable: true
+      description: Store identifier (99 = online store)
+    - name: date_time
+      type: string
+      nullable: true
+      description: Transaction timestamp (will be cast to timestamp in Silver)
+    - name: change_type_id
+      type: int
+      nullable: true
+      description: Type of change (1=sale, 2=restock, 3=shrinkage, 4=bopis)
+    - name: items
+      type: array<struct<item_id:int,quantity:int>>
+      nullable: true
+      description: Array of item transactions
+    - name: bopis_order_id
+      type: string
+      nullable: true
+      description: BOPIS order identifier (set only for change_type_id=4)
+    - name: channel
+      type: string
+      nullable: true
+      description: Sales channel (online/in-store) — introduced in batch02
+    - name: _ingested_at
+      type: timestamp
+      nullable: false
+      description: Ingestion timestamp (audit column)
+  dlt_expectations:
+    - name: valid_trans_id
+      condition: "trans_id IS NOT NULL"
+      action: fail
+    - name: valid_store_id
+      condition: "store_id IS NOT NULL"
+      action: fail
+    - name: valid_change_type_id
+      condition: "change_type_id IS NOT NULL"
+      action: fail
+    - name: valid_items_array
+      condition: "items IS NOT NULL AND size(items) > 0"
+      action: fail
+    - name: valid_date_time
+      condition: "date_time IS NOT NULL"
+      action: fail
 
-silver_<entity>:
-  description: Cleaned and enriched data
-  quality_rules:
-    - name: <rule_name>
-      rule: "<SQL condition>"
-      action: drop|warn|fail
+bronze_inventory_snapshot_raw:
+  description: Raw physical inventory count snapshots with Auto Loader metadata
+  layer: bronze
+  streaming: true
+  ingestion_method: auto_loader
+  columns:
+    - name: id
+      type: int
+      nullable: true
+      description: Snapshot identifier
+    - name: item_id
+      type: int
+      nullable: true
+      description: Item identifier
+    - name: employee_id
+      type: int
+      nullable: true
+      description: Employee who performed count
+    - name: store_id
+      type: int
+      nullable: true
+      description: Store identifier
+    - name: date_time
+      type: string
+      nullable: true
+      description: Count timestamp (will be cast to timestamp in Silver)
+    - name: quantity
+      type: int
+      nullable: true
+      description: Counted quantity
+    - name: _ingested_at
+      type: timestamp
+      nullable: false
+      description: Ingestion timestamp (audit column)
+  dlt_expectations:
+    - name: valid_snapshot_id
+      condition: "id IS NOT NULL"
+      action: fail
+    - name: valid_item_id
+      condition: "item_id IS NOT NULL"
+      action: fail
+    - name: valid_store_id
+      condition: "store_id IS NOT NULL"
+      action: fail
+    - name: valid_date_time
+      condition: "date_time IS NOT NULL"
+      action: fail
+    - name: valid_quantity
+      condition: "quantity IS NOT NULL"
+      action: fail
 
-gold_<metric>:
-  description: Business-level aggregation
+# =============================================================================
+# SILVER LAYER — Cleaned, Deduplicated, Validated
+# =============================================================================
+
+silver_inventory_change:
+  description: Cleaned inventory change events (exploded, one row per trans_id+item_id)
+  layer: silver
   grain:
-    - <dimension_1>
-    - <dimension_2>
+    - trans_id
+    - item_id
+  columns:
+    - name: trans_id
+      type: string
+      nullable: false
+      description: Transaction identifier
+    - name: store_id
+      type: int
+      nullable: false
+      description: Store identifier
+    - name: date_time
+      type: timestamp
+      nullable: false
+      description: Transaction timestamp
+    - name: change_type_id
+      type: int
+      nullable: false
+      description: Type of change
+    - name: item_id
+      type: int
+      nullable: false
+      description: Item identifier
+    - name: quantity
+      type: int
+      nullable: false
+      description: Quantity change (signed)
+    - name: bopis_order_id
+      type: string
+      nullable: true
+      description: BOPIS order identifier
+    - name: channel
+      type: string
+      nullable: true
+      description: Sales channel
+    - name: _ingested_at
+      type: timestamp
+      nullable: false
+      description: Ingestion timestamp
+  quality_rules:
+    - name: non_null_keys
+      rule: "trans_id IS NOT NULL AND store_id IS NOT NULL AND item_id IS NOT NULL"
+      action: quarantine
+    - name: valid_store_reference
+      rule: "store_id IN (SELECT store_id FROM store_ref)"
+      action: quarantine
+    - name: valid_item_reference
+      rule: "item_id IN (SELECT item_id FROM item_ref)"
+      action: quarantine
+    - name: valid_change_type_reference
+      rule: "change_type_id IN (SELECT change_type_id FROM change_type_ref)"
+      action: quarantine
+    - name: quantity_sign_matches_expected
+      rule: "SIGN(quantity) = expected_sign (from change_type_ref)"
+      action: quarantine
+      description: "Sale/shrinkage must be negative, restock must be positive"
+  deduplication:
+    method: latest_by_ingested_at
+    keys:
+      - trans_id
+      - item_id
+
+silver_inventory_change_quarantine:
+  description: Invalid inventory change records with failure reasons
+  layer: silver_quarantine
+  columns:
+    - name: trans_id
+      type: string
+      nullable: true
+    - name: store_id
+      type: int
+      nullable: true
+    - name: item_id
+      type: int
+      nullable: true
+    - name: quantity
+      type: int
+      nullable: true
+    - name: _ingested_at
+      type: timestamp
+      nullable: false
+    - name: _quarantine_reason
+      type: string
+      nullable: false
+      description: "Comma-separated list of failed rules"
+    - name: _quarantined_at
+      type: timestamp
+      nullable: false
+
+silver_inventory_snapshot:
+  description: Cleaned physical inventory count snapshots
+  layer: silver
+  grain:
+    - id
+  columns:
+    - name: id
+      type: int
+      nullable: false
+    - name: item_id
+      type: int
+      nullable: false
+    - name: employee_id
+      type: int
+      nullable: false
+    - name: store_id
+      type: int
+      nullable: false
+    - name: date_time
+      type: timestamp
+      nullable: false
+    - name: quantity
+      type: int
+      nullable: false
+    - name: _ingested_at
+      type: timestamp
+      nullable: false
+  quality_rules:
+    - name: non_null_keys
+      rule: "id IS NOT NULL AND item_id IS NOT NULL AND store_id IS NOT NULL"
+      action: quarantine
+    - name: valid_store_reference
+      rule: "store_id IN (SELECT store_id FROM store_ref)"
+      action: quarantine
+    - name: valid_item_reference
+      rule: "item_id IN (SELECT item_id FROM item_ref)"
+      action: quarantine
+    - name: non_negative_quantity
+      rule: "quantity >= 0"
+      action: quarantine
+      description: "Physical counts cannot be negative"
+  deduplication:
+    method: latest_by_ingested_at
+    keys:
+      - id
+
+silver_inventory_snapshot_quarantine:
+  description: Invalid snapshot records with failure reasons
+  layer: silver_quarantine
+  columns:
+    - name: id
+      type: int
+      nullable: true
+    - name: item_id
+      type: int
+      nullable: true
+    - name: store_id
+      type: int
+      nullable: true
+    - name: quantity
+      type: int
+      nullable: true
+    - name: _ingested_at
+      type: timestamp
+      nullable: false
+    - name: _quarantine_reason
+      type: string
+      nullable: false
+    - name: _quarantined_at
+      type: timestamp
+      nullable: false
+
+silver_latest_inventory_snapshot:
+  description: Latest physical count per store+item (window function over snapshots)
+  layer: silver
+  grain:
+    - store_id
+    - item_id
+  columns:
+    - name: store_id
+      type: int
+      nullable: false
+    - name: item_id
+      type: int
+      nullable: false
+    - name: latest_snapshot_date_time
+      type: timestamp
+      nullable: false
+    - name: latest_quantity
+      type: int
+      nullable: false
+    - name: employee_id
+      type: int
+      nullable: false
+
+# =============================================================================
+# GOLD LAYER — Business Metrics
+# =============================================================================
+
+gold_inventory_current:
+  description: Current inventory levels with safety stock alerts
+  layer: gold
+  grain:
+    - store_id
+    - item_id
+  refresh_cadence: on_pipeline_update
+  columns:
+    - name: store_id
+      type: int
+      nullable: false
+      description: Store identifier
+    - name: store_name
+      type: string
+      nullable: false
+      description: Store name (from store_ref)
+    - name: item_id
+      type: int
+      nullable: false
+      description: Item identifier
+    - name: item_name
+      type: string
+      nullable: false
+      description: Item name (from item_ref)
+    - name: category
+      type: string
+      nullable: false
+      description: Item category
+    - name: current_quantity
+      type: int
+      nullable: false
+      description: "Current inventory: latest_snapshot + sum(changes since snapshot)"
+    - name: safety_stock_quantity
+      type: int
+      nullable: false
+      description: Minimum threshold (from item_ref)
+    - name: below_safety_stock
+      type: boolean
+      nullable: false
+      description: Alert flag (current_quantity < safety_stock_quantity)
+    - name: last_snapshot_date
+      type: timestamp
+      nullable: true
+      description: Date of most recent physical count
+    - name: last_change_date
+      type: timestamp
+      nullable: true
+      description: Date of most recent inventory change event
+    - name: calculated_at
+      type: timestamp
+      nullable: false
+      description: Calculation timestamp
+  business_rules:
+    - name: current_quantity_calculation
+      formula: "latest_snapshot.quantity + SUM(changes.quantity WHERE date_time > snapshot.date_time)"
+    - name: safety_stock_alert
+      condition: "current_quantity < safety_stock_quantity"
+      action: "Set below_safety_stock = true"
   aggregations:
-    - <metric_1>
-    - <metric_2>
+    - total_items_below_safety_stock
+    - total_stores_with_alerts
+    - avg_inventory_coverage
+
+# =============================================================================
+# REFERENCE TABLES — Static Dimensions
+# =============================================================================
+
+store_ref:
+  description: Store dimension
+  layer: reference
+  source: CSV file (materialized as table)
+  columns:
+    - name: store_id
+      type: int
+      nullable: false
+      primary_key: true
+    - name: store_name
+      type: string
+      nullable: false
+    - name: store_type
+      type: string
+      nullable: false
+      description: "e.g., flagship, standard, outlet"
+    - name: city
+      type: string
+      nullable: false
+
+item_ref:
+  description: Item dimension with safety stock thresholds
+  layer: reference
+  source: CSV file (materialized as table)
+  columns:
+    - name: item_id
+      type: int
+      nullable: false
+      primary_key: true
+    - name: item_name
+      type: string
+      nullable: false
+    - name: supplier_id
+      type: int
+      nullable: false
+    - name: category
+      type: string
+      nullable: false
+    - name: unit_price
+      type: double
+      nullable: false
+    - name: safety_stock_quantity
+      type: int
+      nullable: false
+      description: Minimum inventory threshold
+
+change_type_ref:
+  description: Inventory change type dimension
+  layer: reference
+  source: CSV file (materialized as table)
+  columns:
+    - name: change_type_id
+      type: int
+      nullable: false
+      primary_key: true
+    - name: change_type_name
+      type: string
+      nullable: false
+      description: "sale, restock, shrinkage, bopis"
+    - name: expected_sign
+      type: string
+      nullable: false
+      description: "positive or negative"
+
+supplier_ref:
+  description: Supplier dimension (optional for core solution)
+  layer: reference
+  source: CSV file (materialized as table)
+  columns:
+    - name: supplier_id
+      type: int
+      nullable: false
+      primary_key: true
+    - name: supplier_name
+      type: string
+      nullable: false
+    - name: lead_time_days
+      type: int
+      nullable: false

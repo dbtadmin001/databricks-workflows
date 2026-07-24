@@ -1,28 +1,115 @@
 project:
-  name: <project_name>
-  description: <business purpose and context>
+  name: pos_inventory_analytics
+  description: Real-time POS inventory analytics with safety stock alerting and BOPIS support
   version: "1.0.0"
-  
+  business_owner: data-automation-services
+  technical_contact: albertraviss@gmail.com
+
 data_sources:
-  - name: <source_name>
-    type: table|file|api
-    location: <catalog.schema.table or path>
+  # Incremental event streams (Auto Loader)
+  - name: inventory_events
+    type: file
+    format: json
+    location: /Volumes/{catalog}/{schema}/raw_landing/pos_data/landing/inventory_events
+    description: Inventory change events (sales, restocks, shrinkage, BOPIS)
+    schema: explicit  # Fixed schema to avoid evolution issues
   
+  - name: inventory_snapshots
+    type: file
+    format: json
+    location: /Volumes/{catalog}/{schema}/raw_landing/pos_data/landing/inventory_snapshots
+    description: Physical inventory count snapshots
+    schema: explicit
+  
+  # Static reference data
+  - name: store_reference
+    type: file
+    format: csv
+    location: /Volumes/{catalog}/{schema}/raw_landing/pos_data/reference/store.csv
+    description: Store dimension (id, name, type, city)
+  
+  - name: item_reference
+    type: file
+    format: csv
+    location: /Volumes/{catalog}/{schema}/raw_landing/pos_data/reference/item.csv
+    description: Item dimension (id, name, supplier, category, price, safety_stock_quantity)
+  
+  - name: change_type_reference
+    type: file
+    format: csv
+    location: /Volumes/{catalog}/{schema}/raw_landing/pos_data/reference/inventory_change_type.csv
+    description: Inventory change type dimension (sale/restock/shrinkage/bopis, expected_sign)
+  
+  - name: supplier_reference
+    type: file
+    format: csv
+    location: /Volumes/{catalog}/{schema}/raw_landing/pos_data/reference/supplier.csv
+    description: Supplier dimension (id, name, lead_time_days)
+
 medallion:
   bronze_tables:
-    - bronze_<entity>
+    - bronze_inventory_change_raw      # Streaming table, Auto Loader
+    - bronze_inventory_snapshot_raw    # Streaming table, Auto Loader
+  
   silver_tables:
-    - silver_<entity>_enriched
+    - silver_inventory_change          # Cleaned and deduplicated events
+    - silver_inventory_change_quarantine  # Data quality failures
+    - silver_inventory_snapshot        # Cleaned snapshots
+    - silver_inventory_snapshot_quarantine  # Data quality failures
+    - silver_latest_inventory_snapshot  # Latest snapshot per store+item
+  
   gold_tables:
-    - gold_<metric>
+    - gold_inventory_current           # Current inventory with safety stock alerts
+  
+  reference_tables:
+    - store_ref
+    - item_ref
+    - change_type_ref
+    - supplier_ref
+
+data_quality:
+  quarantine_strategy: separate_tables  # silver_*_quarantine tables
+  quality_rules:
+    - non_null_keys
+    - valid_references
+    - quantity_sign_validation
+  expectations_count: 5  # Minimum DLT expectations
+
+features:
+  - incremental_ingestion  # Auto Loader with checkpointing
+  - explicit_schemas       # Fixed schemas to prevent evolution restarts
+  - bopis_tracking        # Buy Online Pickup In Store
+  - channel_tracking      # online vs in-store
+  - safety_stock_alerts   # Inventory below threshold
+  - quarantine_pattern    # DQ failures isolated
 
 environments:
   dev:
-    catalog: workspace
-    schema: <project_name>_dev
+    catalog: project_12_pos_inventory_analytics_dev
+    schema: medallion
+    sql_warehouse_id: cc91c315736f92f8
+    volume_base_path: /Volumes/project_12_pos_inventory_analytics_dev/medallion/raw_landing/pos_data
+  
   test:
-    catalog: workspace
-    schema: <project_name>_test
+    catalog: project_12_pos_inventory_analytics_test
+    schema: medallion
+    sql_warehouse_id: cc91c315736f92f8
+    volume_base_path: /Volumes/project_12_pos_inventory_analytics_test/medallion/raw_landing/pos_data
+  
   prod:
-    catalog: workspace
-    schema: <project_name>_prod
+    catalog: project_12_pos_inventory_analytics_prod
+    schema: medallion
+    sql_warehouse_id: cc91c315736f92f8
+    volume_base_path: /Volumes/project_12_pos_inventory_analytics_prod/medallion/raw_landing/pos_data
+
+deployment:
+  platform: databricks
+  orchestration: dlt_pipeline  # Lakeflow Spark Declarative Pipeline
+  compute: serverless
+  photon: true
+  edition: advanced
+
+dependencies:
+  python_packages:
+    - plotly>=5.24,<7
+  wheel_package: project_12_pos_inventory_analytics-0.1.0-py3-none-any.whl
