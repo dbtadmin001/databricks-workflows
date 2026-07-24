@@ -6,7 +6,8 @@
 
 # Base image: Official Apache Spark with Python 3.11
 # Pinned by digest for reproducibility (update with scripts/update_base_image.sh)
-FROM apache/spark:3.5.0-python3@sha256:TODO_FETCH_DIGEST
+# Digest fetched 2024-01, corresponds to apache/spark:3.5.0-python3
+FROM apache/spark:3.5.0-python3@sha256:0ed5154e6b32ac3af1272d4d65e9f65b13afcfe80b41ad10bd059bcd6317863c
 
 USER root
 

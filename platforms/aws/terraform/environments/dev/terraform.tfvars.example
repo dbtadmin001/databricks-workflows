@@ -1,0 +1,8 @@
+# Terraform variables for dev environment
+# Copy this file to terraform.tfvars and fill in your values
+
+aws_region = "us-east-1"
+
+# Restrict EKS API access to your IP in production
+# Get your IP: curl ifconfig.me
+eks_public_access_cidrs = ["0.0.0.0/0"]

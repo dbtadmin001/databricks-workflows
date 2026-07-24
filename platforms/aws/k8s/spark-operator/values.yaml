@@ -1,0 +1,60 @@
+# Helm values for Spark Operator
+# Install: helm install spark-operator spark-operator/spark-operator \
+#   --namespace spark-operator --create-namespace -f values.yaml
+
+# Enable webhook for SparkApplication validation
+webhook:
+  enable: true
+  port: 8080
+
+# Enable metrics for Prometheus
+metrics:
+  enable: true
+  port: 10254
+
+# Spark Operator configuration
+sparkJobNamespace: spark-jobs
+
+# Resource limits
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# Leader election for HA
+leaderElection:
+  lockName: spark-operator-lock
+  lockNamespace: spark-operator
+
+# Log level
+logLevel: 2
+
+# Enable UI service (for Spark History Server integration)
+uiService:
+  enable: true
+
+# Controller threads
+controllerThreads: 10
+
+# Resync period
+resyncInterval: 30
+
+# Batch scheduler (for pod scheduling)
+batchScheduler:
+  enable: false  # Set to true if using Volcano or Yunikorn
+
+# Image pull policy
+image:
+  pullPolicy: IfNotPresent
+
+# Service account
+serviceAccounts:
+  spark:
+    create: true
+    name: spark-operator
+  sparkApplications:
+    create: true
+    name: spark-job-sa
