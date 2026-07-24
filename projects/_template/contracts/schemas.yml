@@ -1,0 +1,29 @@
+# Data contracts for <project_name>
+# Define expected schemas and quality rules
+
+bronze_<entity>:
+  description: Raw data with audit columns
+  columns:
+    - name: <column_name>
+      type: string|int|double|timestamp
+      nullable: true|false
+      description: <column purpose>
+      constraints:
+        - type: positive|unique|pattern
+          message: "<validation message>"
+
+silver_<entity>:
+  description: Cleaned and enriched data
+  quality_rules:
+    - name: <rule_name>
+      rule: "<SQL condition>"
+      action: drop|warn|fail
+
+gold_<metric>:
+  description: Business-level aggregation
+  grain:
+    - <dimension_1>
+    - <dimension_2>
+  aggregations:
+    - <metric_1>
+    - <metric_2>

@@ -1,0 +1,28 @@
+project:
+  name: <project_name>
+  description: <business purpose and context>
+  version: "1.0.0"
+  
+data_sources:
+  - name: <source_name>
+    type: table|file|api
+    location: <catalog.schema.table or path>
+  
+medallion:
+  bronze_tables:
+    - bronze_<entity>
+  silver_tables:
+    - silver_<entity>_enriched
+  gold_tables:
+    - gold_<metric>
+
+environments:
+  dev:
+    catalog: workspace
+    schema: <project_name>_dev
+  test:
+    catalog: workspace
+    schema: <project_name>_test
+  prod:
+    catalog: workspace
+    schema: <project_name>_prod
