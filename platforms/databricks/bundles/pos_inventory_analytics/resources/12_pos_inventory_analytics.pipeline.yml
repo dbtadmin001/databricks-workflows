@@ -1,0 +1,21 @@
+resources:
+  pipelines:
+    project_12_pos_inventory_analytics_pipeline:
+      name: "${var.environment_label} | 12_pos_inventory_analytics | Inventory Pipeline"
+      catalog: "${var.catalog}"
+      schema: "${var.schema}"
+      serverless: true
+      photon: true
+      channel: CURRENT
+      development: false
+      # Preserve existing run_as - cannot be changed once set
+      run_as:
+        service_principal_name: e553c7e6-ec16-4dba-b19d-39f24d43486b
+      libraries:
+        - notebook:
+            path: ../src/notebooks/dlt_pipeline.py
+      environment:
+        dependencies:
+          - --editable ${workspace.file_path}
+      configuration:
+        source_base_path: "/Volumes/${var.catalog}/${var.schema}/${var.landing_volume}/pos_data"

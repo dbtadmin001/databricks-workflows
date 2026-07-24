@@ -1,0 +1,59 @@
+resources:
+  jobs:
+    project_12_pos_inventory_analytics_end_to_end_job:
+      name: "${var.environment_label} | 12_pos_inventory_analytics | Medallion"
+      tags:
+        managed_by: data-automation-services
+        automation_owner: data-automation-services
+        environment: "${bundle.target}"
+        project_id: 12_pos_inventory_analytics
+        workload: medallion
+        asset_class: data_pipeline
+      max_concurrent_runs: 1
+      parameters:
+        - {name: code_sha, default: "${var.code_sha}"}
+      environments:
+        - environment_key: Default
+          spec:
+            environment_version: "2"
+            dependencies:
+              - ../dist/*.whl
+              - "plotly>=5.24,<7"
+      tasks:
+        - task_key: 01_medallion_execution
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.project_12_pos_inventory_analytics_pipeline.id}
+            full_refresh: false
+        - task_key: 01b_schema_and_quality_audit
+          depends_on: [{task_key: 01_medallion_execution}]
+          environment_key: Default
+          max_retries: 2
+          min_retry_interval_millis: 30000
+          timeout_seconds: 600
+          python_wheel_task:
+            package_name: project_12_pos_inventory_analytics
+            entry_point: audit_main
+            parameters:
+              - "--catalog"
+              - "${var.catalog}"
+              - "--schema"
+              - "${var.schema}"
+        - task_key: 02_sql_validation
+          depends_on: [{task_key: 01b_schema_and_quality_audit}]
+          timeout_seconds: 300
+          sql_task:
+            warehouse_id: "${var.sql_warehouse_id}"
+            file:
+              path: ../sql/validate_outputs.sql
+            parameters:
+              catalog: "${var.catalog}"
+              schema: "${var.schema}"
+        - task_key: 03_publish_analytics
+          depends_on: [{task_key: 02_sql_validation}]
+          environment_key: Default
+          timeout_seconds: 600
+          notebook_task:
+            notebook_path: ${workspace.root_path}/projects/pos_inventory_analytics/entry_points/dashboard.py
+            base_parameters:
+              catalog: "${var.catalog}"
+              schema: "${var.schema}"

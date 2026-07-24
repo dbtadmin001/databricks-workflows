@@ -1,0 +1,51 @@
+bundle:
+  name: project_12_pos_inventory_analytics
+
+include:
+  - resources/*.yml
+
+artifacts:
+  default:
+    type: whl
+    path: .
+
+variables:
+  environment_label:
+    description: Uppercase environment label used in Databricks asset display names
+    default: DEV
+  catalog:
+    description: Unity Catalog catalog
+  schema:
+    description: Project-owned schema
+  sql_warehouse_id:
+    description: Approved existing or Terraform-managed SQL warehouse
+  landing_volume:
+    description: Terraform-managed raw landing volume
+    default: raw_landing
+  code_sha:
+    description: Git commit SHA used by the resumable stage execution identity
+
+# Commented out for user deployment - will run as current user
+# run_as:
+#   service_principal_name: ${var.automation_service_principal_name}
+
+targets:
+  dev:
+    default: true
+    mode: production
+    workspace:
+      root_path: /Workspace/Users/albertraviss@gmail.com/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      environment_label: DEV
+      catalog: project_12_pos_inventory_analytics_dev
+      schema: medallion
+      sql_warehouse_id: cc91c315736f92f8
+  prod:
+    mode: production
+    workspace:
+      root_path: /Workspace/Users/albertraviss@gmail.com/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      environment_label: PRD
+      catalog: project_12_pos_inventory_analytics_prod
+      schema: medallion
+      sql_warehouse_id: cc91c315736f92f8

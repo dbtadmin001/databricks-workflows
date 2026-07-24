@@ -1,0 +1,26 @@
+# Kubernetes SparkApplication manifest for POS Inventory Analytics - Bronze Layer
+apiVersion: sparkoperator.k8s.io/v1beta2
+kind: SparkApplication
+metadata:
+  name: pos-inventory-bronze
+  namespace: data-pipelines
+spec:
+  type: Python
+  pythonVersion: "3"
+  mode: cluster
+  image: "databricks/spark:latest"
+  imagePullPolicy: Always
+  mainApplicationFile: "local:///opt/spark/projects/pos_inventory_analytics/entry_points/inventory_pipeline.py"
+  arguments:
+    - "--layer=bronze"
+  sparkConf:
+    "spark.sql.extensions": "io.delta.sql.DeltaSparkSessionExtension"
+    "spark.sql.catalog.spark_catalog": "org.apache.spark.sql.delta.catalog.DeltaCatalog"
+  driver:
+    cores: 1
+    memory: "2g"
+    serviceAccount: spark-operator
+  executor:
+    cores: 2
+    instances: 2
+    memory: "4g"
