@@ -1,0 +1,30 @@
+resources:
+  jobs:
+    project_08_programme_funding_reconciliation_dashboard_job:
+      name: "${var.environment_label} | 08_programme_funding_reconciliation | Analytics"
+      tags:
+        environment: "${bundle.target}"
+        project_id: 08_programme_funding_reconciliation
+        workload: analytics
+        asset_class: dashboard
+        managed_by: data-automation-services
+        automation_owner: data-automation-services
+      environments:
+        - environment_key: Default
+          spec:
+            environment_version: "2"
+            dependencies:
+              - ../dist/*.whl
+              - "plotly>=5.24,<7"
+      tasks:
+        - task_key: render_funding_insights
+          environment_key: Default
+          timeout_seconds: 600
+          notebook_task:
+            notebook_path: ../src/notebooks/funding_insights_dashboard.py
+            base_parameters:
+              catalog: "${var.catalog}"
+              schema: "${var.schema}"
+      permissions:
+        - service_principal_name: ${var.automation_service_principal_name}
+          level: CAN_MANAGE

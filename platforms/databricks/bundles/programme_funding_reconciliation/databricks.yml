@@ -1,0 +1,57 @@
+bundle:
+  name: project_08_programme_funding_reconciliation
+
+include:
+  - resources/*.yml
+
+sync:
+  include:
+    - data/raw/**
+
+artifacts:
+  default:
+    type: whl
+    path: .
+
+variables:
+  environment_label:
+    description: Stable environment label used in Databricks asset display names
+    default: DEV
+  automation_service_principal_name:
+    description: Service-principal application ID that owns and runs automation assets
+    default: e553c7e6-ec16-4dba-b19d-39f24d43486b
+  catalog:
+    description: Unity Catalog catalog
+  schema:
+    description: Project-owned schema
+  landing_volume:
+    description: Terraform-managed Unity Catalog volume for immutable raw files
+    default: raw_landing
+  sql_warehouse_id:
+    description: Approved existing serverless SQL warehouse
+
+run_as:
+  service_principal_name: ${var.automation_service_principal_name}
+
+targets:
+  dev:
+    default: true
+    mode: production
+    workspace:
+      root_path: /Workspace/Users/${var.automation_service_principal_name}/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      environment_label: DEV
+      catalog: project_08_programme_funding_reconciliation_dev
+      schema: medallion
+      landing_volume: raw_landing
+      sql_warehouse_id: cc91c315736f92f8
+  prod:
+    mode: production
+    workspace:
+      root_path: /Workspace/Users/${var.automation_service_principal_name}/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      environment_label: PRD
+      catalog: project_08_programme_funding_reconciliation_prod
+      schema: medallion
+      landing_volume: raw_landing
+      sql_warehouse_id: cc91c315736f92f8

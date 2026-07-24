@@ -1,0 +1,77 @@
+resources:
+  jobs:
+    project_08_programme_funding_reconciliation_end_to_end_job:
+      name: "${var.environment_label} | 08_programme_funding_reconciliation | Medallion"
+      tags:
+        environment: "${bundle.target}"
+        project_id: 08_programme_funding_reconciliation
+        workload: medallion
+        asset_class: data_pipeline
+        managed_by: data-automation-services
+        automation_owner: data-automation-services
+      environments:
+        - environment_key: Default
+          spec:
+            environment_version: "2"
+            dependencies:
+              - ../dist/*.whl
+              - "plotly>=5.24,<7"
+      tasks:
+        - task_key: bronze_ingestion
+          environment_key: Default
+          max_retries: 2
+          min_retry_interval_millis: 30000
+          timeout_seconds: 600
+          notebook_task:
+            notebook_path: ../src/notebooks/bronze_ingestion.py
+            base_parameters:
+              catalog: "${var.catalog}"
+              schema: "${var.schema}"
+              landing_volume: "${var.landing_volume}"
+              bundle_raw_dir: "${workspace.file_path}/data/raw"
+        - task_key: silver_transform
+          depends_on:
+            - task_key: bronze_ingestion
+          environment_key: Default
+          max_retries: 1
+          timeout_seconds: 600
+          notebook_task:
+            notebook_path: ../src/notebooks/silver_transform.py
+            base_parameters:
+              catalog: "${var.catalog}"
+              schema: "${var.schema}"
+        - task_key: gold_wap_publish
+          depends_on:
+            - task_key: silver_transform
+          environment_key: Default
+          max_retries: 1
+          timeout_seconds: 600
+          notebook_task:
+            notebook_path: ../src/notebooks/gold_wap.py
+            base_parameters:
+              catalog: "${var.catalog}"
+              schema: "${var.schema}"
+        - task_key: sql_validation
+          depends_on:
+            - task_key: gold_wap_publish
+          timeout_seconds: 300
+          sql_task:
+            warehouse_id: "${var.sql_warehouse_id}"
+            file:
+              path: ../sql/validate_outputs.sql
+            parameters:
+              catalog: "${var.catalog}"
+              schema: "${var.schema}"
+        - task_key: funding_insights_dashboard
+          depends_on:
+            - task_key: sql_validation
+          environment_key: Default
+          timeout_seconds: 600
+          notebook_task:
+            notebook_path: ../src/notebooks/funding_insights_dashboard.py
+            base_parameters:
+              catalog: "${var.catalog}"
+              schema: "${var.schema}"
+      permissions:
+        - service_principal_name: ${var.automation_service_principal_name}
+          level: CAN_MANAGE

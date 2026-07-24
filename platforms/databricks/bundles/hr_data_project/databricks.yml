@@ -1,0 +1,57 @@
+bundle:
+  name: hr_data_project
+
+include:
+  - resources/*.yml
+
+sync:
+  include:
+    - data/raw/**
+
+artifacts:
+  default:
+    type: whl
+    path: .
+
+variables:
+  environment_label:
+    description: Uppercase environment label used in Databricks asset display names
+    default: DEV
+  automation_service_principal_name:
+    description: Service-principal application ID that owns and runs automation assets
+    default: e553c7e6-ec16-4dba-b19d-39f24d43486b
+  catalog:
+    description: Unity Catalog catalog
+  schema:
+    description: Project-owned schema
+  sql_warehouse_id:
+    description: Approved existing or Terraform-managed SQL warehouse
+  landing_volume:
+    description: Terraform-managed raw landing volume
+    default: raw_landing
+  code_sha:
+    description: Git commit SHA used by the resumable stage execution identity
+
+run_as:
+  service_principal_name: ${var.automation_service_principal_name}
+
+targets:
+  dev:
+    default: true
+    mode: production
+    workspace:
+      root_path: /Workspace/Users/${var.automation_service_principal_name}/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      environment_label: DEV
+      catalog: hr_data_project_dev
+      schema: medallion
+      sql_warehouse_id: cc91c315736f92f8
+  prod:
+    mode: production
+    workspace:
+      root_path: /Workspace/Users/${var.automation_service_principal_name}/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      environment_label: PRD
+      catalog: hr_data_project_prod
+      schema: medallion
+      sql_warehouse_id: cc91c315736f92f8
