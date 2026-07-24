@@ -1,0 +1,88 @@
+resources:
+  jobs:
+    project_05_chess_grandmaster_end_to_end_job:
+      name: '[${bundle.target}] chess_grandmaster_end_to_end'
+      environments:
+      - environment_key: Default
+        spec:
+          base_environment: databricks_ml
+          dependencies:
+          - ../dist/*.whl
+      tasks:
+      - task_key: source_connectivity
+        environment_key: Default
+        max_retries: 1
+        min_retry_interval_millis: 30000
+        timeout_seconds: 60
+        python_wheel_task:
+          package_name: project_05_chess_grandmaster
+          entry_point: probe_chess_source
+      - task_key: bronze_ingestion
+        depends_on:
+        - task_key: source_connectivity
+        environment_key: Default
+        max_retries: 1
+        min_retry_interval_millis: 30000
+        timeout_seconds: 600
+        python_wheel_task:
+          package_name: project_05_chess_grandmaster
+          entry_point: run_bronze
+          parameters:
+          - --catalog
+          - ${var.catalog}
+          - --schema
+          - ${var.schema}
+          - --usernames
+          - magnuscarlsen,hikaru,fabianocaruana,levonaronian,wesley_so,alinac,anishgiri,ianjb,firouzja2003,viditchess
+          - --archive-months
+          - '6'
+          - --run-id
+          - '{{job.run_id}}'
+          - --request-timeout-seconds
+          - '30'
+          - --source-max-retries
+          - '3'
+      - task_key: silver_transform
+        depends_on:
+        - task_key: bronze_ingestion
+        environment_key: Default
+        timeout_seconds: 600
+        python_wheel_task:
+          package_name: project_05_chess_grandmaster
+          entry_point: run_silver
+          parameters:
+          - --catalog
+          - ${var.catalog}
+          - --schema
+          - ${var.schema}
+      - task_key: gold_publish
+        depends_on:
+        - task_key: silver_transform
+        environment_key: Default
+        timeout_seconds: 600
+        python_wheel_task:
+          package_name: project_05_chess_grandmaster
+          entry_point: run_gold
+          parameters:
+          - --catalog
+          - ${var.catalog}
+          - --schema
+          - ${var.schema}
+      - task_key: medallion_sql_validation
+        depends_on:
+        - task_key: gold_publish
+        sql_task:
+          file:
+            path: ../sql/validate_medallion.sql
+            source: WORKSPACE
+          warehouse_id: ${var.sql_warehouse_id}
+          parameters:
+            bronze_table: ${var.catalog}.${var.schema}.chess_bronze_pubapi
+            checkpoint_table: ${var.catalog}.${var.schema}.chess_ingestion_checkpoints
+            silver_table: ${var.catalog}.${var.schema}.chess_silver_games
+            quarantine_table: ${var.catalog}.${var.schema}.chess_quarantine_games
+            summary_table: ${var.catalog}.${var.schema}.chess_gold_player_summary
+            segment_table: ${var.catalog}.${var.schema}.chess_gold_player_segment
+            daily_table: ${var.catalog}.${var.schema}.chess_gold_daily_activity
+            opening_table: ${var.catalog}.${var.schema}.chess_gold_opening_performance
+            rating_table: ${var.catalog}.${var.schema}.chess_gold_rating_progression

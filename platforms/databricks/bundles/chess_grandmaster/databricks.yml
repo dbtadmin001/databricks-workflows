@@ -1,0 +1,49 @@
+bundle:
+  name: project_05_chess_grandmaster
+include:
+- resources/*.yml
+artifacts:
+  default:
+    type: whl
+    path: .
+variables:
+  catalog:
+    description: Unity Catalog catalog
+  schema:
+    description: Project schema
+  sql_warehouse_id:
+    description: SQL warehouse for validation
+  usernames:
+    description: Approved comma-separated Grandmaster seed users
+    default: hikaru
+  archive_months:
+    description: Latest monthly archives per player
+    default: 1
+  request_timeout_seconds:
+    description: Timeout for each Chess.com API request
+    default: 20
+  source_max_retries:
+    description: Bounded transient source retry budget
+    default: 2
+targets:
+  dev:
+    default: true
+    mode: development
+    workspace:
+      host: https://dbc-38a9c1c2-d9e1.cloud.databricks.com/
+    variables:
+      catalog: project_05_chess_grandmaster_dev
+      schema: medallion
+      sql_warehouse_id: cc91c315736f92f8
+      usernames: hikaru
+      archive_months: 1
+  prod:
+    mode: production
+    variables:
+      catalog: project_05_chess_grandmaster_prod
+      schema: medallion
+      sql_warehouse_id: cc91c315736f92f8
+      usernames: hikaru
+      archive_months: 2
+    workspace:
+      root_path: /Workspace/Users/albertraviss@gmail.com/.bundle/${bundle.name}/${bundle.target}

@@ -1,0 +1,42 @@
+bundle:
+  name: project_10_adr_pharmacovigilance
+
+include:
+  - resources/*.yml
+
+artifacts:
+  default:
+    type: whl
+    path: .
+
+variables:
+  automation_service_principal_name:
+    description: Service-principal application ID that owns and runs automation assets
+    default: e553c7e6-ec16-4dba-b19d-39f24d43486b
+  catalog:
+    description: Unity Catalog catalog
+  schema:
+    description: Project-owned schema
+  sql_warehouse_id:
+    description: Approved existing or Terraform-managed SQL warehouse
+  landing_volume:
+    description: Terraform-managed raw landing volume
+    default: raw_landing
+
+run_as:
+  service_principal_name: ${var.automation_service_principal_name}
+
+targets:
+  dev:
+    default: true
+    mode: development
+    variables:
+      catalog: project_10_adr_pharmacovigilance_dev
+      schema: medallion
+      sql_warehouse_id: cc91c315736f92f8
+  prod:
+    mode: production
+    variables:
+      catalog: project_10_adr_pharmacovigilance_prod
+      schema: medallion
+      sql_warehouse_id: cc91c315736f92f8

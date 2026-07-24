@@ -1,0 +1,23 @@
+resources:
+  jobs:
+    project_10_adr_pharmacovigilance_dashboard_job:
+      name: "[${bundle.target}] project_10_adr_pharmacovigilance_insights_dashboard"
+      environments:
+        - environment_key: Default
+          spec:
+            environment_version: "2"
+            dependencies:
+              - ../dist/*.whl
+              - "plotly>=5.24,<7"
+      tasks:
+        - task_key: render_pharmacovigilance_insights
+          environment_key: Default
+          timeout_seconds: 600
+          notebook_task:
+            notebook_path: ../src/notebooks/04_dashboard.py
+            base_parameters:
+              catalog: "${var.catalog}"
+              schema: "${var.schema}"
+      permissions:
+        - service_principal_name: ${var.automation_service_principal_name}
+          level: CAN_MANAGE
