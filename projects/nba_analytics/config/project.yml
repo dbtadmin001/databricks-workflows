@@ -1,0 +1,23 @@
+{
+  "project_id": "13_nba_analytics",
+  "name": "NBA Analytics Platform",
+  "status": "ACTIVE",
+  "root": "projects/13_nba_analytics",
+  "governance_contract_version": "1.0.0",
+  "governance_root": "docs",
+  "skills_root": ".databricks-agent-skills",
+  "state_files": [
+    "projects/13_nba_analytics/WORKFLOW.md",
+    "projects/13_nba_analytics/STATUS.md",
+    "projects/13_nba_analytics/PROJECT_STATE.json",
+    "projects/13_nba_analytics/NEXT_TASK.json"
+  ],
+  "artifact_root": "projects/13_nba_analytics/evidence",
+  "source_roots": [
+    "projects/13_nba_analytics/src",
+    "projects/13_nba_analytics/sql",
+    "projects/13_nba_analytics/resources",
+    "projects/13_nba_analytics/infra"
+  ],
+  "environment_variables": []
+}
