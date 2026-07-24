@@ -1,0 +1,29 @@
+bundle:
+  name: project_07_unicef_supply_chain
+
+include:
+  - resources/*.yml
+
+artifacts:
+  default:
+    type: whl
+    path: .
+
+variables:
+  catalog:
+    description: Unity Catalog catalog
+  schema:
+    description: Project-owned schema
+
+targets:
+  dev:
+    default: true
+    mode: development
+    variables:
+      catalog: project_07_unicef_supply_chain_dev
+      schema: medallion
+  prod:
+    mode: production
+    variables:
+      catalog: project_07_unicef_supply_chain_prod
+      schema: medallion

@@ -1,0 +1,36 @@
+resources:
+  jobs:
+    project_07_unicef_supply_chain_end_to_end_job:
+      name: "[${bundle.target}] project_07_unicef_supply_chain_end_to_end"
+      environments:
+        - environment_key: Default
+          spec:
+            base_environment: databricks_ml
+            dependencies:
+              - ../dist/*.whl
+      tasks:
+        - task_key: bronze_ingestion
+          environment_key: Default
+          max_retries: 2
+          min_retry_interval_millis: 30000
+          timeout_seconds: 600
+          python_wheel_task:
+            package_name: project_07_unicef_supply_chain
+            entry_point: run_bronze
+            parameters: ["--catalog", "${var.catalog}", "--schema", "${var.schema}"]
+        - task_key: silver_transform
+          depends_on: [{task_key: bronze_ingestion}]
+          environment_key: Default
+          timeout_seconds: 600
+          python_wheel_task:
+            package_name: project_07_unicef_supply_chain
+            entry_point: run_silver
+            parameters: ["--catalog", "${var.catalog}", "--schema", "${var.schema}"]
+        - task_key: gold_metrics
+          depends_on: [{task_key: silver_transform}]
+          environment_key: Default
+          timeout_seconds: 600
+          python_wheel_task:
+            package_name: project_07_unicef_supply_chain
+            entry_point: run_gold
+            parameters: ["--catalog", "${var.catalog}", "--schema", "${var.schema}"]

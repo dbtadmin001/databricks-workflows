@@ -1,0 +1,101 @@
+# Data Contracts for Humanitarian Supply Chain
+# Version: 1.0.0
+
+# BRONZE LAYER - Raw CSV ingestion
+bronze_warehouses:
+  description: Raw warehouse dimension
+  business_key: WAREHOUSE_ID
+  columns: [WAREHOUSE_ID, WAREHOUSE_NAME, LOCATION, CAPACITY]
+
+bronze_programmes:
+  description: Raw programme dimension
+  business_key: PROGRAMME_ID
+  columns: [PROGRAMME_ID, PROGRAMME_NAME, MANAGER, BUDGET]
+
+bronze_items:
+  description: Raw item dimension
+  business_key: ITEM_CODE
+  columns: [ITEM_CODE, ITEM_DESCRIPTION, UNIT_OF_MEASURE, STANDARD_COST]
+
+bronze_shipments:
+  description: Raw shipment fact with known defects
+  business_key: SHIPMENT_ID
+  columns: [SHIPMENT_ID, WAREHOUSE_ID, PROGRAMME_ID, ITEM_CODE, SHIP_DATE, QUANTITY, UNIT_COST, STATUS]
+  known_issues:
+    - Inconsistent date formats
+    - Inconsistent STATUS casing
+    - Currency-formatted UNIT_COST
+    - Duplicate rows
+    - Orphan FKs
+    - Missing/negative QUANTITY
+
+# SILVER LAYER - Normalized and validated
+silver_warehouses:
+  description: Conformed warehouse dimension
+  grain: [WAREHOUSE_ID]
+  quality_rules:
+    - non_null_warehouse_id
+    - unique_warehouse_id
+
+silver_programmes:
+  description: Conformed programme dimension
+  grain: [PROGRAMME_ID]
+  quality_rules:
+    - non_null_programme_id
+    - unique_programme_id
+
+silver_items:
+  description: Conformed item dimension
+  grain: [ITEM_CODE]
+  quality_rules:
+    - non_null_item_code
+    - unique_item_code
+
+silver_shipments:
+  description: Validated shipment fact
+  grain: [SHIPMENT_ID]
+  columns:
+    - SHIPMENT_ID (string, non-null)
+    - WAREHOUSE_ID (string, non-null, FK to silver_warehouses)
+    - PROGRAMME_ID (string, non-null, FK to silver_programmes)
+    - ITEM_CODE (string, non-null, FK to silver_items)
+    - SHIP_DATE (timestamp, normalized from mixed formats)
+    - QUANTITY (int, non-null, positive unless CANCELLED)
+    - UNIT_COST (double, parsed from currency format)
+    - STATUS (string, standardized to 4 values)
+  quality_rules:
+    - valid_warehouse_fk
+    - valid_programme_fk
+    - valid_item_fk
+    - valid_date_format
+    - valid_status_value
+    - quantity_business_rule  # Positive OR (negative AND status=CANCELLED)
+  deduplication:
+    - exact_duplicates_removed
+    - conflicting_duplicates_quarantined
+
+silver_shipments_quarantine:
+  description: Failed shipment records with failure reasons
+  columns: [all silver_shipments columns + _quarantine_reason, _quarantined_at]
+
+# GOLD LAYER - Business analytics
+fact_shipments:
+  description: Enriched shipment fact with dimension attributes
+  grain: [SHIPMENT_ID]
+  business_logic:
+    - Joins silver_shipments with dimensions
+    - Includes warehouse name, location, capacity
+    - Includes programme name, manager, budget
+    - Includes item description, unit_of_measure
+    - Calculates total_cost = QUANTITY * UNIT_COST
+
+programme_monthly_summary:
+  description: Monthly shipment summary by programme
+  grain: [PROGRAMME_ID, YEAR_MONTH]
+  aggregations:
+    - total_shipments (count)
+    - total_quantity (sum)
+    - total_cost (sum)
+    - avg_unit_cost (avg)
+    - distinct_items (count distinct)
+    - distinct_warehouses (count distinct)

@@ -1,0 +1,109 @@
+project:
+  name: humanitarian_supply_chain
+  description: UNICEF humanitarian supply chain shipment tracking and analytics
+  version: "1.0.0"
+  business_owner: unicef-supply-chain
+  technical_contact: albertraviss@gmail.com
+
+data_sources:
+  # Static CSV files (one-time Oracle extract)
+  - name: warehouses
+    type: file
+    format: csv
+    location: data/raw/WAREHOUSES.csv
+    description: Warehouse dimension (6 rows)
+    business_key: WAREHOUSE_ID
+  
+  - name: programmes
+    type: file
+    format: csv
+    location: data/raw/PROGRAMMES.csv
+    description: Programme dimension (5 rows)
+    business_key: PROGRAMME_ID
+  
+  - name: items
+    type: file
+    format: csv
+    location: data/raw/ITEMS.csv
+    description: Item dimension (7 rows)
+    business_key: ITEM_CODE
+  
+  - name: shipments
+    type: file
+    format: csv
+    location: data/raw/SHIPMENTS.csv
+    description: Shipment fact table (167 rows with known defects)
+    business_key: SHIPMENT_ID
+    known_defects:
+      - Inconsistent date formats (ISO/US/Oracle)
+      - Inconsistent STATUS casing (9 variants for 4 states)
+      - Currency-formatted UNIT_COST ($ prefix)
+      - 6 exact duplicate rows
+      - 1 conflicting duplicate (SHP5011)
+      - Orphan foreign keys (WH099, PRG999)
+      - Missing QUANTITY (4 rows)
+      - Negative QUANTITY (5 rows, all CANCELLED)
+
+medallion:
+  bronze_tables:
+    - bronze_warehouses
+    - bronze_programmes
+    - bronze_items
+    - bronze_shipments
+  
+  silver_tables:
+    - silver_warehouses           # Conformed dimension
+    - silver_programmes           # Conformed dimension
+    - silver_items                # Conformed dimension
+    - silver_shipments           # Normalized fact
+    - silver_shipments_quarantine  # Data quality failures
+  
+  gold_tables:
+    - fact_shipments              # Enriched shipment fact
+    - programme_monthly_summary   # Monthly aggregation by programme
+
+data_quality:
+  quarantine_strategy: separate_table  # silver_shipments_quarantine
+  quality_rules:
+    - non_null_keys
+    - valid_foreign_keys
+    - valid_date_formats
+    - valid_status_values
+    - positive_quantity_or_cancelled
+  deduplication:
+    - exact_duplicates_removed
+    - conflicting_duplicates_quarantined
+
+features:
+  - static_csv_source              # No API, no authentication
+  - date_format_normalization      # ISO/US/Oracle → timestamp
+  - status_value_standardization   # 9 variants → 4 canonical
+  - currency_parsing               # $18.36 → 18.36
+  - duplicate_detection            # Exact + conflicting
+  - orphan_fk_handling             # WH099, PRG999 → quarantine
+  - cancelled_shipment_handling    # Negative qty allowed if CANCELLED
+
+environments:
+  dev:
+    catalog: humanitarian_supply_chain_dev
+    schema: medallion
+    sql_warehouse_id: cc91c315736f92f8
+  
+  test:
+    catalog: humanitarian_supply_chain_test
+    schema: medallion
+    sql_warehouse_id: cc91c315736f92f8
+  
+  prod:
+    catalog: humanitarian_supply_chain_prod
+    schema: medallion
+    sql_warehouse_id: cc91c315736f92f8
+
+deployment:
+  platform: databricks
+  orchestration: spark_sql  # Not DLT in current form
+  compute: serverless
+  photon: true
+
+dependencies:
+  python_packages: []  # No special dependencies
