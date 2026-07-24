@@ -1,0 +1,36 @@
+name: 'pos_retail_gold_tests'
+version: '1.0.0'
+config-version: 2
+
+# This dbt project provides testing, documentation, and lineage for Gold tables
+# produced by the PySpark pipeline in src/core/transformations/gold/.
+#
+# IMPORTANT: This project does NOT create the Gold tables. They are materialized
+# by the Databricks Lakeflow pipeline. dbt only tests and documents them.
+
+profile: 'databricks'
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  pos_retail_gold_tests:
+    # No models to materialize - we only test existing tables
+    +materialized: view
+    +enabled: false
+
+# Require dbt Core 1.5 or newer
+require-dbt-version: ">=1.5.0"
+
+# Dispatch to dbt-databricks for Databricks-specific macros
+dispatch:
+  - macro_namespace: dbt
+    search_order: ['databricks', 'dbt']

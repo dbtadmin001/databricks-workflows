@@ -1,0 +1,18 @@
+# dbt artifacts
+target/
+dbt_packages/
+logs/
+
+# OS files
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+
+# User-specific profile (contains credentials)
+profiles.yml

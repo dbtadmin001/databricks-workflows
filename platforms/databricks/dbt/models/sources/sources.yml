@@ -1,0 +1,274 @@
+version: 2
+
+sources:
+  - name: gold
+    description: |
+      Gold layer tables produced by the PySpark Lakeflow pipeline.
+      These tables are materialized by src/core/transformations/gold/gold_tables_v2.py
+      and are NOT created by dbt. dbt only tests and documents them.
+    
+    database: workspace
+    schema: default
+    
+    tables:
+      - name: gold_daily_revenue
+        description: |
+          Daily revenue aggregated by franchise, product, and date.
+          Used for trend analysis and time-series dashboards.
+        columns:
+          - name: transaction_date
+            description: "Date of transactions"
+            tests:
+              - not_null
+          
+          - name: transaction_month
+            description: "Year-month of transactions (yyyy-MM format)"
+            tests:
+              - not_null
+          
+          - name: franchiseID
+            description: "Franchise/store identifier"
+            tests:
+              - not_null
+          
+          - name: franchise_name
+            description: "Franchise/store name"
+          
+          - name: city
+            description: "Franchise city"
+          
+          - name: country
+            description: "Franchise country"
+          
+          - name: store_size
+            description: "Store size classification"
+          
+          - name: product
+            description: "Product name"
+            tests:
+              - not_null
+          
+          - name: total_revenue
+            description: "Sum of transaction amounts for this group"
+            tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  expression: ">= 0"
+                  config:
+                    severity: warn
+          
+          - name: total_units_sold
+            description: "Sum of quantity sold"
+            tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  expression: "> 0"
+          
+          - name: transaction_count
+            description: "Number of transactions"
+            tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  expression: "> 0"
+          
+          - name: avg_transaction_value
+            description: "Average transaction amount"
+            tests:
+              - not_null
+      
+      - name: gold_product_performance
+        description: |
+          Product-level metrics: revenue, volume, customer reach, and revenue share.
+        columns:
+          - name: product
+            description: "Product name"
+            tests:
+              - unique
+              - not_null
+          
+          - name: total_revenue
+            description: "Total revenue for this product across all transactions"
+            tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  expression: ">= 0"
+          
+          - name: total_units_sold
+            description: "Total units sold"
+            tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  expression: "> 0"
+          
+          - name: transaction_count
+            description: "Number of transactions involving this product"
+            tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  expression: "> 0"
+          
+          - name: avg_unit_price
+            description: "Average unit price"
+            tests:
+              - not_null
+          
+          - name: avg_transaction_value
+            description: "Average transaction value"
+            tests:
+              - not_null
+          
+          - name: unique_customers
+            description: "Count of distinct customers who purchased this product"
+            tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  expression: "> 0"
+          
+          - name: revenue_share
+            description: "Product's share of total revenue (0.0 to 1.0)"
+            tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  expression: "BETWEEN 0 AND 1"
+      
+      - name: gold_franchise_ranking
+        description: |
+          Franchise performance metrics with revenue ranking and geo coordinates.
+        columns:
+          - name: franchiseID
+            description: "Franchise identifier"
+            tests:
+              - unique
+              - not_null
+          
+          - name: franchise_name
+            description: "Franchise name"
+            tests:
+              - not_null
+          
+          - name: city
+            description: "Franchise city"
+          
+          - name: district
+            description: "Franchise district"
+          
+          - name: country
+            description: "Franchise country"
+          
+          - name: store_size
+            description: "Store size classification"
+          
+          - name: longitude
+            description: "Longitude coordinate"
+            tests:
+              - dbt_utils.expression_is_true:
+                  expression: "BETWEEN -180 AND 180"
+                  config:
+                    severity: warn
+          
+          - name: latitude
+            description: "Latitude coordinate"
+            tests:
+              - dbt_utils.expression_is_true:
+                  expression: "BETWEEN -90 AND 90"
+                  config:
+                    severity: warn
+          
+          - name: total_revenue
+            description: "Total revenue for this franchise"
+            tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  expression: ">= 0"
+          
+          - name: total_units_sold
+            description: "Total units sold"
+            tests:
+              - not_null
+          
+          - name: transaction_count
+            description: "Number of transactions"
+            tests:
+              - not_null
+          
+          - name: avg_basket_size
+            description: "Average transaction value"
+            tests:
+              - not_null
+          
+          - name: unique_customers
+            description: "Count of distinct customers"
+            tests:
+              - not_null
+          
+          - name: revenue_rank
+            description: "Franchise rank by total revenue (1 = highest)"
+            tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  expression: "> 0"
+      
+      - name: gold_customer_segments
+        description: |
+          Customer segmentation with spend tiers, visit frequency, and favorite products.
+        columns:
+          - name: customerID
+            description: "Customer identifier"
+            tests:
+              - unique
+              - not_null
+          
+          - name: customer_name
+            description: "Customer full name"
+          
+          - name: gender
+            description: "Customer gender"
+          
+          - name: customer_country
+            description: "Customer country"
+          
+          - name: customer_continent
+            description: "Customer continent"
+          
+          - name: total_spend
+            description: "Total amount spent by customer"
+            tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  expression: ">= 0"
+          
+          - name: visit_count
+            description: "Number of transactions"
+            tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  expression: "> 0"
+          
+          - name: avg_spend_per_visit
+            description: "Average spend per visit"
+            tests:
+              - not_null
+          
+          - name: stores_visited
+            description: "Count of distinct franchises visited"
+            tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  expression: "> 0"
+          
+          - name: active_days
+            description: "Count of distinct dates with transactions"
+            tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  expression: "> 0"
+          
+          - name: spend_tier
+            description: "Customer spend classification (High/Medium/Low)"
+            tests:
+              - not_null
+              - accepted_values:
+                  values: ['High', 'Medium', 'Low']
+          
+          - name: favourite_product
+            description: "Product with highest spend for this customer (nullable if no transactions)"

@@ -1,0 +1,53 @@
+# dbt profile configuration for Databricks
+# Copy this file to ~/.dbt/profiles.yml and fill in your credentials
+
+databricks:
+  target: dev
+  outputs:
+    dev:
+      type: databricks
+      # Authentication via personal access token
+      host: "{{ env_var('DATABRICKS_HOST') }}"  # e.g., https://workspace.cloud.databricks.com
+      http_path: "{{ env_var('DATABRICKS_HTTP_PATH') }}"  # e.g., /sql/1.0/warehouses/<warehouse-id>
+      token: "{{ env_var('DATABRICKS_TOKEN') }}"
+      
+      # Catalog and schema
+      catalog: workspace
+      schema: default
+      
+      # Connection settings
+      threads: 4
+      connect_retries: 3
+      connect_timeout: 10
+      retry_all: true
+    
+    test:
+      type: databricks
+      host: "{{ env_var('DATABRICKS_HOST') }}"
+      http_path: "{{ env_var('DATABRICKS_HTTP_PATH') }}"
+      token: "{{ env_var('DATABRICKS_TOKEN') }}"
+      catalog: workspace
+      schema: default_test
+      threads: 4
+    
+    prod:
+      type: databricks
+      host: "{{ env_var('DATABRICKS_HOST') }}"
+      http_path: "{{ env_var('DATABRICKS_HTTP_PATH') }}"
+      token: "{{ env_var('DATABRICKS_TOKEN') }}"
+      catalog: prod
+      schema: default
+      threads: 8
+
+# Required environment variables:
+# - DATABRICKS_HOST: Your workspace URL (e.g., https://your-workspace.cloud.databricks.com)
+# - DATABRICKS_HTTP_PATH: SQL warehouse HTTP path (get from SQL warehouse details page)
+# - DATABRICKS_TOKEN: Personal access token or service principal token
+#
+# Get HTTP path:
+#   Databricks UI → SQL Warehouses → [your warehouse] → Connection Details → HTTP Path
+#
+# Example:
+#   export DATABRICKS_HOST="https://adb-1234567890123456.7.azuredatabricks.net"
+#   export DATABRICKS_HTTP_PATH="/sql/1.0/warehouses/abcdef1234567890"
+#   export DATABRICKS_TOKEN="dapi..."
